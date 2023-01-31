@@ -1708,6 +1708,118 @@ RsDoPinFunctionDescriptor (
     return (Rnode);
 }
 
+/*******************************************************************************
+ *
+ * FUNCTION:    RsDoClockInputDescriptor
+ *
+ * PARAMETERS:  Info                - Parse Op and resource template offset
+ *
+ * RETURN:      Completed resource node
+ *
+ * DESCRIPTION: Construct a long "ClockInput" descriptor
+ *
+ ******************************************************************************/
+
+ASL_RESOURCE_NODE *
+RsDoClockInputDescriptor (
+    ASL_RESOURCE_INFO       *Info)
+{
+    AML_RESOURCE            *Descriptor;
+    ACPI_PARSE_OBJECT       *InitializerOp;
+    ASL_RESOURCE_NODE       *Rnode;
+    char                    *ResourceSource = NULL;
+    UINT16                  ResSourceLength;
+    UINT16                  DescriptorSize;
+    UINT32                  i;
+    UINT32                  CurrentByteOffset;
+
+    InitializerOp = Info->DescriptorTypeOp->Asl.Child;
+    CurrentByteOffset = Info->CurrentByteOffset;
+
+    /*
+     * Calculate lengths for fields that have variable length:
+     * 1) Resource Source string
+     */
+    ResSourceLength = RsGetStringDataLength (InitializerOp);
+
+    DescriptorSize = ACPI_AML_SIZE_LARGE (AML_RESOURCE_CLOCK_INPUT) + ResSourceLength;
+
+    /* Allocate the local resource node and initialize */
+
+    Rnode = RsAllocateResourceNode (DescriptorSize +
+        sizeof (AML_RESOURCE_LARGE_HEADER));
+
+    Descriptor = Rnode->Buffer;
+    Descriptor->ClockInput.ResourceLength = DescriptorSize;
+    Descriptor->ClockInput.DescriptorType = ACPI_RESOURCE_NAME_CLOCK_INPUT;
+    Descriptor->ClockInput.RevisionId = AML_RESOURCE_CLOCK_INPUT_REVISION;
+
+    /* Build pointers to optional areas */
+
+    ResourceSource = ACPI_ADD_PTR (char, Descriptor, sizeof (AML_RESOURCE_CLOCK_INPUT));
+
+    /* Setup offsets within the descriptor */
+    if (ResSourceLength)
+        Descriptor->ClockInput.ResSourceOffset = (UINT16)
+            ACPI_PTR_DIFF (ResourceSource, Descriptor);
+    else
+        Descriptor->ClockInput.ResSourceOffset = 0;
+
+    /* Process all child initialization nodes */
+
+    for (i = 0; InitializerOp; i++)
+    {
+        switch (i)
+        {
+        case 0:
+            Descriptor->ClockInput.FrequencyNumerator = (UINT32)InitializerOp->Asl.Value.Integer;
+            RsCreateDwordField (InitializerOp, ACPI_RESTAG_FQN,
+                CurrentByteOffset + ASL_RESDESC_OFFSET (ClockInput.FrequencyNumerator));
+
+            break;
+
+        case 1:
+            Descriptor->ClockInput.FrequencyDivisor = (UINT16)InitializerOp->Asl.Value.Integer;
+            RsCreateWordField (InitializerOp, ACPI_RESTAG_FQD,
+                CurrentByteOffset + ASL_RESDESC_OFFSET (ClockInput.FrequencyDivisor));
+
+            break;
+
+        case 2:
+            RsSetFlagBits16 (&Descriptor->ClockInput.Flags, InitializerOp, 1, 0);
+            break;
+
+        case 3:
+            RsSetFlagBits16 (&Descriptor->ClockInput.Flags, InitializerOp, 0, 0);
+            break;
+
+        case 4: /* ResSource [Optional Field] */
+
+            if (ResSourceLength)
+            {
+                /* Copy string to the descriptor */
+
+                strcpy (ResourceSource, InitializerOp->Asl.Value.String);
+            }
+            break;
+
+        case 5: /* ResSource Index [Optional Field] */
+            if (InitializerOp->Asl.ParseOpcode != PARSEOP_DEFAULT_ARG)
+            {
+                Descriptor->ClockInput.ResSourceIndex = (UINT8) InitializerOp->Asl.Value.Integer;
+            }
+            break;
+
+        default:
+            break;
+        }
+
+        InitializerOp = RsCompleteNodeAndGetNext (InitializerOp);
+    }
+
+    return (Rnode);
+}
+
 
 /*******************************************************************************
  *

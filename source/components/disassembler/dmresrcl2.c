@@ -523,6 +523,44 @@ AcpiDmGpioDescriptor (
     }
 }
 
+void
+AcpiDmClockInputDescriptor (
+    ACPI_OP_WALK_INFO       *Info,
+    AML_RESOURCE            *Resource,
+    UINT32                  Length,
+    UINT32                  Level)
+{
+    char                    *DeviceName = NULL;
+
+    AcpiDmIndent (Level);
+
+    AcpiOsPrintf ("ClockInput (");
+
+    AcpiOsPrintf ("0x%8.8X, ", Resource->ClockInput.FrequencyNumerator);
+
+    AcpiOsPrintf ("0x%4.4X, ", Resource->ClockInput.FrequencyDivisor);
+
+    AcpiOsPrintf ("%s, ",
+        AcpiGbl_ClockInputScale [ACPI_EXTRACT_2BIT_FLAG (Resource->ClockInput.Flags, 1)]);
+
+    AcpiOsPrintf ("%s, ",
+        AcpiGbl_ClockInputMode [ACPI_GET_1BIT_FLAG (Resource->ClockInput.Flags)]);
+
+    if (Resource->ClockInput.ResSourceOffset)
+    {
+        DeviceName = ACPI_ADD_PTR (char,
+            Resource, Resource->ClockInput.ResSourceOffset),
+        AcpiUtPrintString (DeviceName, ACPI_UINT16_MAX);
+    }
+
+    AcpiOsPrintf (", ");
+
+    AcpiOsPrintf ("0x%2.2X", Resource->ClockInput.ResSourceIndex);
+
+    AcpiOsPrintf (")\n");
+
+}
+
 /*******************************************************************************
  *
  * FUNCTION:    AcpiDmPinFunctionDescriptor
